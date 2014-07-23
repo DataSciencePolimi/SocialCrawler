@@ -1,0 +1,28 @@
+!.gitignore
+
+
+### Node
+lib-cov
+*.seed
+*.log
+*.csv
+*.dat
+*.out
+*.pid
+*.gz
+
+
+# Do not install dependencies
+node_modules
+data
+db
+mongo.conf
+status
+
+
+npm-debug.log
+
+
+
+### SublimeText project files
+*.sublime-workspace

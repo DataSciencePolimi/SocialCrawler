@@ -1,0 +1,24 @@
+{
+  "name": "Instagram",
+  "version": "0.1.0",
+  "description": "Intagram API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Volox",
+  "license": "MIT",
+  "dependencies": {
+    "bluebird": "2.x",
+    "debug": "1.x",
+    "engine.io": "1.x",
+    "express": "4.x",
+    "instagram-node": "0.4.x",
+    "flickrapi": "0.3.x",
+    "lodash": "2.x",
+    "mkdirp": "0.5.x",
+    "mongoose": "3.8.x",
+    "primus": "2.x",
+    "yargs": "1.x"
+  }
+}
