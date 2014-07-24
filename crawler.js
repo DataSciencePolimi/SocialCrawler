@@ -4,6 +4,7 @@ var http = require( 'http' );
 var path = require( 'path' );
 
 // Load modules
+var _ = require( 'lodash' );
 var Primus = require('primus');
 var express = require( 'express' );
 var mkdirp = require( 'mkdirp' );
@@ -30,6 +31,9 @@ if( argv._.length<1 ) {
   return;
 }
 var social = argv._[0];
+var port = argv.p || argv.port || 80;
+var key = argv.k || argv.key || 'AIzaSyCnyhvgRPmKmkx7_ER7AojeWBvenL4fUtQ';
+
 var baseDir = path.resolve( __dirname, 'social', social );
 var configFile = path.resolve( baseDir, 'config.json' );
 var scanFile = path.resolve( baseDir, 'scan.js' );
@@ -125,19 +129,37 @@ app.use( express.static( __dirname + '/public' ) );
 app.get( '/', function( req, res ){
   res.redirect( '/index.html' );
 } );
+app.get( '/index.*', function( req, res, next ) {
+  var indexFile = path.resolve( __dirname, 'pages', 'index.html' );
+  
+  fs.readFile( indexFile, 'utf8', function( err, data ) {
+    if( err ) return next( err );
+
+    res.type( 'html' );
+    res.send( _.template( data, {
+      social: social,
+      key: key
+    } ) );
+  } );
+} );
+
 
 primus.on( 'connection', function gotConnection( spark ) {
   DataModel
   .find()
   .exec( function( err, dataList ) {
+    
+    debug( 'Updating the view with %d components', dataList.length );
 
     var interval = setInterval( function() {
       
-      spark.write( dataList.splice( 0, 20 ) );
+      spark.write( dataList.splice( 0, 50 ) );
       
-      if( dataList.length===0 )
+      if( dataList.length===0 ) {
+        debug( 'Sending completed, stopping interval' );
         clearInterval( interval );
-    }, 500 );
+      }
+    }, 1000 );
 
   } );
 } );
@@ -184,10 +206,11 @@ function saveElement( savedList, element ) {
   } )
   .then( function() {
     savedList.push( element );
-  }, function handleError( err ) {
-    debug( 'Unable to save data: %s', err.message );
+  }, function handleError() {
+    // debug( 'Unable to save data: %s', err.message );
   } )
-  .return( savedList );
+  .return( savedList )
+  ;
 }
 /**
  * Call scan and save eash result
@@ -200,23 +223,21 @@ function scanAndSaveCoordinates( nope, coordinates, idx ) {
     return Promise.reduce( dataList, saveElement, [] );
   } )
   .then( function dataSaved( savedList ) {
-    debug( 'Data saved correctly' );
+    if( savedList.length>0 ) {
+      debug( '%d element added, bradcasting data', savedList.length );
+      primus.write( savedList );
+    }
 
     GRID_INDEX = idx;
     fs.writeFileSync( GRID_INDEX_FILE, ''+GRID_INDEX );
-
-    /**
-     * Broadcase the new data
-     */
-    primus.write( savedList );
 
   }, function dataNotRetrieved( err ) {
     debug( 'Unable to retrieve data: %s', err.message );
   } );
 }
-
-
-
+/**
+ * Create the grid based on the current area and sub area.
+ */
 function createGrid( subArea ) {
   return Promise.resolve( subArea )
   .then( generateGrid )
@@ -299,21 +320,14 @@ function cycleArea( nope, subarea, idx ) {
  */
 Promise
 .resolve( mongoosePromise )
-.then( function( db ) {
-  debug( 'Database ready, import shema and model' );
-
-  return db;
-} )
 .then( schema )
-.then( function startServer( model ) {
+.then( function saveModel( model ) {
   DataModel = model;
   debug( 'Model loaded, starting server' );
 } )
 .then( function setupServer() {
-  /**
-   * Listen to the 80 port
-   */
-  server.listen( 80 );
+  debug( 'Starting server on port %d', port );
+  server.listen( port );
 } )
 .then( function cycleArray() {
   return Promise.reduce( areas, cycleArea );

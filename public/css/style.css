@@ -3,9 +3,13 @@ html, body {
 }
 body {
   text-align: center;
+  padding-top: 51px;
 }
 
-
-#map {
-  height: 800px;
+.container-fluid {
+  height: 100%;
+}
+google-map {
+  display: block;
+  height: 100%;
 }

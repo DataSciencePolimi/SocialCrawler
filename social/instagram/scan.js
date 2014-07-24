@@ -37,7 +37,7 @@ module.exports = exports = function scanCoordinates( coords ) {
     distance: 50
   } )
   .spread( function( medias, limit ) {
-    debug( '%d data retrieved, limit: %d', medias.length, limit );
+    // debug( '%d data retrieved, limit: %d', medias.length, limit );
 
 
     /**
@@ -64,6 +64,7 @@ module.exports = exports = function scanCoordinates( coords ) {
      * If i reached the limit per hour then wait 1H
      */
     if( limit<=1 ) {
+      debug( 'Limit reached, pausing for 1 hour, see ya...' );
       return Promise.delay( medias, HOUR );
     } else {
       return medias;
