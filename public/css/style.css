@@ -8,6 +8,7 @@ body {
 
 .container-fluid {
   height: 100%;
+  padding: 0;
 }
 google-map {
   display: block;

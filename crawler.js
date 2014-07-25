@@ -135,35 +135,20 @@ app.get( '/index.*', function( req, res, next ) {
   fs.readFile( indexFile, 'utf8', function( err, data ) {
     if( err ) return next( err );
 
-    res.type( 'html' );
-    res.send( _.template( data, {
-      social: social,
-      key: key
-    } ) );
+    DataModel
+    .find()
+    .exec( function( err, markers ) {
+      if( err ) return next( err );
+      
+      res.type( 'html' );
+      res.send( _.template( data, {
+        social: social,
+        key: key,
+        markers: markers
+      } ) );
+    } );
   } );
 } );
-
-
-primus.on( 'connection', function gotConnection( spark ) {
-  DataModel
-  .find()
-  .exec( function( err, dataList ) {
-    
-    debug( 'Updating the view with %d components', dataList.length );
-
-    var interval = setInterval( function() {
-      
-      spark.write( dataList.splice( 0, 50 ) );
-      
-      if( dataList.length===0 ) {
-        debug( 'Sending completed, stopping interval' );
-        clearInterval( interval );
-      }
-    }, 1000 );
-
-  } );
-} );
-
 
 
 

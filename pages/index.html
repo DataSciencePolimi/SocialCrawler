@@ -34,16 +34,30 @@
       <div class="collapse navbar-collapse">
         <ul class="nav navbar-nav">
           <li class="active"><a href="#">Home</a></li>
-          <li><a href="#about">About</a></li>
-          <li><a href="#contact">Contact</a></li>
         </ul>
-      </div><!--/.nav-collapse -->
+      </div>
     </div>
   </div>
 
 
   <div class="container-fluid">
-    <google-map id="map" latitude="45.4627338" longitude="9.1777323" zoom="13"></google-map>
+    <google-map apiKey="<%= key %>" id="map" latitude="45.4627338" longitude="9.1777323" zoom="13">
+      <% markers.forEach( function( m ) { %>
+        <% if( m.location ) { %>
+          <google-map-marker
+            latitude="<%= m.location.coordinates[ 1 ] %>"
+            longitude="<%= m.location.coordinates[ 0 ] %>"
+            title="<%= m.location.name %>">
+            <% if( m.type==='image' ) { %>
+              <img src="<%= m.images.thumbnail.url %>" alt="<%= m.location.name %>" />
+            <% } else if( m.type==='video' ) { %>
+              <video src="<%= m.videos.thumbnail.url %>" alt="<%= m.location.name %>"></video>
+            <% } %>
+          </google-map-marker>
+        <% } %>
+        
+      <% } ); %>
+    </google-map>
   </div>
   <script type="text/javascript" src="js/script.js"></script>
 </body>
