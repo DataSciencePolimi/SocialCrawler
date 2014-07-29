@@ -2,6 +2,7 @@
 var fs = require( 'fs' );
 var http = require( 'http' );
 var path = require( 'path' );
+var stream = require( 'stream' );
 
 // Load modules
 var _ = require( 'lodash' );
@@ -63,7 +64,6 @@ function connectToMongo() {
   .then( function( client ) {
     debug( 'Connected to mongo' );
     mongoClient = client;
-    return mongoClient;
   } );
 }
 function selectDatabase( dataBase ) {
@@ -188,6 +188,21 @@ app.get( '/status/:social', function( req, res ) {
 app.get( '/data/:social', function( req, res, next ) {
   var social = req.params.social;
 
+  var wait = new stream.Transform();
+
+  var buffer = '';
+  var times = 0;
+  wait._transform = function( chunk, enc, done ) {
+    buffer += chunk;
+    times++;
+
+    if( times>=200 ) {
+      this.push( buffer );
+      buffer = '';
+      return done();
+    }
+  };
+
 
   var socialBasePath = path.resolve( __dirname, 'social', social );
   var configFile = path.resolve( socialBasePath, 'config.json' );
@@ -201,13 +216,14 @@ app.get( '/data/:social', function( req, res, next ) {
     return [ selectDatabase( dbName ), table ];
   } )
   .spread( function findData( db, table ) {
-    var stringify = JSONStream.stringify();
+    var stringify = JSONStream.stringifyObject();
 
     db
     .collection( table )
     .find()
     .stream()
     .pipe( stringify )
+    .pipe( wait )
     .pipe( res );
 
   } )
