@@ -119,9 +119,13 @@ function mapReady() {
 
   primus.on( 'data', updateHeatMap );
 
-  $.getJSON( '/data/'+social )
+  $.ajax( {
+    url: '/data/'+social,
+    type: 'get',
+    dataType: 'json'
+  } )
   .done( function splitDataPoints( dataList ) {
-    
+
     /**
      * Split data in 200 pieces to perform better
      */
