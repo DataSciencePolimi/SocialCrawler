@@ -1,6 +1,5 @@
 {
   "secret": "0e77cbf127a2df45",
   "apiKey": "a90cca4e9932224b4ce020bc12e88620",
-
-  "dbname": "Flickr"
+  "dbname": "images"
 }
