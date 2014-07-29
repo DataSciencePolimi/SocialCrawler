@@ -28,7 +28,7 @@ if( argv._.length<1 ) {
   return;
 }
 var social = argv._[0];
-var port = argv.p || argv.port || 80;
+var port = argv.p || 80;
 
 var baseDir = path.resolve( __dirname, 'social', social );
 var configFile = path.resolve( baseDir, 'config.json' );

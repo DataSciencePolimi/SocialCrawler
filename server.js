@@ -32,9 +32,9 @@ Promise.promisifyAll( mongo );
 /**
  * Configure social data
  */
-var port = argv.p || argv.port || 80;
-var socket = argv.s || argv.socket || 'https://localhost:801';
-var key = argv.k || argv.key || 'AIzaSyCnyhvgRPmKmkx7_ER7AojeWBvenL4fUtQ';
+var port = argv.p || 80;
+var socket = argv.s || 'https://localhost:801';
+var key = argv.k || 'AIzaSyCnyhvgRPmKmkx7_ER7AojeWBvenL4fUtQ';
 
 
 
