@@ -1,4 +1,4 @@
-/* global areas, google, subAreaIndex, areaIndex, Primus, social */
+/* global areas, google, subAreaIndex, areaIndex, Primus, social, oboe */
 /* jshint browser: true*/
 /* jshint jquery: true */
 
@@ -116,33 +116,19 @@ function mapReady() {
 
   primus.on('data', updateHeatMap);
 
-  $.ajax({
-    url: '/data/' + social,
-    type: 'get',
-    dataType: 'json'
-  })
-    .done(function splitDataPoints(dataList) {
-
-      /**
-       * Split data in 200 pieces to perform better
-       */
-      var interval = setInterval(function() {
-        var list = dataList.splice(0, 200);
-        updateHeatMap(list);
-
-        if (dataList.length === 0)
-          clearInterval(interval);
-      }, 800);
-
+  oboe('/data/' + social)
+    .node('location', function gotData(location) {
+      var lat = location.coordinates[1];
+      var lng = location.coordinates[0];
+      addHeatmapPoint(lat, lng);
     });
-
 }
 
 
 function initialize() {
   var mapOptions = {
     center: new google.maps.LatLng(45.4627338, 9.1777323),
-    zoom: 14
+    zoom: 12
   };
 
 
