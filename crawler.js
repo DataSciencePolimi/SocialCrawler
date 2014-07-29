@@ -3,7 +3,8 @@ var fs = require( 'fs' );
 var path = require( 'path' );
 
 // Load modules
-var Primus = require('primus');
+var _ = require( 'lodash' );
+var Primus = require( 'primus' );
 var mkdirp = require( 'mkdirp' );
 var mongoose = require( 'mongoose' );
 var Promise = require( 'bluebird' );
@@ -16,15 +17,17 @@ var areas = require( './areas.json' );
 
 
 /**
- * Enable long stack traces
+ * Promise things
  */
 Promise.longStackTraces();
+Promise.promisifyAll( mongoose );
+
 
 /**
  * Configure social data
  */
 if( argv._.length<1 ) {
-  console.error( 'USAGE: node %s <social>', path.basename( argv.$0 ) );
+  console.error( 'USAGE: node %s <social> [-p <port>]', path.basename( argv.$0 ) );
   return;
 }
 var social = argv._[0];
@@ -43,17 +46,25 @@ var schema = require( schemaFile );
  * Init model data
  */
 var DataModel = null;
-Promise.promisifyAll( mongoose );
 
 
-
-
+/**
+ * Check config file
+ */
+if( !_.isString( config.dbname ) ) {
+  console.error( 'The config file must have a string "dbname" field' );
+  return;
+}
+if( !_.isString( config.table ) ) {
+  console.error( 'The config file must have a string "table" field' );
+  return;
+}
 
 
 /**
  * Init status data
  */
-var statusBasePath = path.resolve( __dirname, 'status' );
+var statusBasePath = path.resolve( __dirname, 'status', social );
 mkdirp.sync( statusBasePath );
 var AREA_INDEX_FILE = path.resolve( statusBasePath, 'area.idx' );
 var SUB_AREA_INDEX_FILE = path.resolve( statusBasePath, 'sub_area.idx' );

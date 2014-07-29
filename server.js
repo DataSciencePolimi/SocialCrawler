@@ -40,15 +40,15 @@ var key = argv.k || 'AIzaSyCnyhvgRPmKmkx7_ER7AojeWBvenL4fUtQ';
 
 
 /**
- * Init status data
+ * Init status cache
  */
-var statusBasePath = path.resolve( __dirname, 'status' );
-var AREA_INDEX_FILE = path.resolve( statusBasePath, 'area.idx' );
-var SUB_AREA_INDEX_FILE = path.resolve( statusBasePath, 'sub_area.idx' );
-var GRID_INDEX_FILE = path.resolve( statusBasePath, 'grid.idx' );
-var AREA_INDEX, SUB_AREA_INDEX, GRID_INDEX;
-var grid;
+var cache = {};
 
+
+
+function readFile( file ) {
+  return fs.readFileAsync( file, 'utf8' );
+}
 
 
 
@@ -98,43 +98,121 @@ app.set( 'view engine', 'html' );
 app.use( express.static( __dirname + '/public' ) );
 
 app.get( '/', function( req, res ){
-  res.redirect( '/status/Instagram' );
+  res.redirect( '/status/' );
 } );
 app.get( '/status/:social', function( req, res ) {
-  res.render( 'status', {
-    areaIndex: AREA_INDEX,
-    subAreaIndex: SUB_AREA_INDEX,
-    gridIndex: GRID_INDEX,
-    areas: areas,
-    subAreas: areas[AREA_INDEX],
-    grid: grid,
-    social: req.params.social
+  var social = req.params.social;
+
+  var statusBasePath = path.resolve( __dirname, 'status', social );
+  var AREA_INDEX_FILE = path.resolve( statusBasePath, 'area.idx' );
+  var SUB_AREA_INDEX_FILE = path.resolve( statusBasePath, 'sub_area.idx' );
+  var GRID_INDEX_FILE = path.resolve( statusBasePath, 'grid.idx' );
+
+
+  var promise;
+  if( !cache[social] ) {
+    var socialData = {};
+    promise = Promise
+    .resolve( AREA_INDEX_FILE )
+    .then( readFile )
+    .then( parseInt )
+    .then( function setArea( index ) {
+      socialData.AREA_INDEX = index;
+    } )
+    .catch( function areaIndexError() {
+      socialData.AREA_INDEX = 0;
+    } )
+    // Load SUB AREA INDEX
+    .return( SUB_AREA_INDEX_FILE )
+    .then( readFile )
+    .then( parseInt )
+    .then( function setSubArea( index ) {
+      socialData.SUB_AREA_INDEX = index;
+    } )
+    .catch( function subAreaIndexError() {
+      socialData.SUB_AREA_INDEX = 0;
+    } )
+    // Load GRID INDEX
+    .return( GRID_INDEX_FILE )
+    .then( readFile )
+    .then( parseInt )
+    .then( function setGrid( index ) {
+      socialData.GRID_INDEX = index;
+    } )
+    .catch( function gridIndexError() {
+      socialData.GRID_INDEX = 0;
+    } )
+    .then( function genGridFile() {
+      var gridFileName = 'grid_'+socialData.AREA_INDEX+'_'+socialData.SUB_AREA_INDEX+'.json';
+      var gridPath = path.resolve( statusBasePath, gridFileName );
+      return gridPath;
+    } )
+    .then( readFile )
+    .then( JSON.parse )
+    .then( function saveCoords( coordinates ) {
+      socialData.grid = coordinates;
+    } )
+    .catch( function returnCoords() {
+      socialData.grid = [];
+    } )
+
+    .then( function saveInCache() {
+      socialData.areas = areas;
+      cache[ social ] = socialData;
+      return socialData;
+    } );
+  } else {
+    promise = Promise.resolve( cache[ social ] );
+  }
+
+  /**
+   * Wait for the promise to be fulfilled, then render the page
+   */
+  promise
+  .then( function renderPage( data ) {
+    
+    res.render( 'status', {
+      areaIndex: data.AREA_INDEX,
+      subAreaIndex: data.SUB_AREA_INDEX,
+      gridIndex: data.GRID_INDEX,
+      areas: data.areas,
+      subAreas: data.areas[data.AREA_INDEX],
+      grid: data.grid,
+      social: social
+    } );
   } );
+
+
 } );
 app.get( '/data/:social', function( req, res, next ) {
-  var social = req.params.social || 'Instagram';
+  var social = req.params.social;
 
-  Promise
-  .resolve( social )
-  .then( selectDatabase )
-  .then( function( db ) {
+
+  var socialBasePath = path.resolve( __dirname, 'social', social );
+  var configFile = path.resolve( socialBasePath, 'config.json' );
+
+  readFile( configFile )
+  .then( JSON.parse )
+  .then( function getDbInfo( config ) {
+    var dbName = config.dbname;
+    var table = config.table;
+
+    return [ selectDatabase( dbName ), table ];
+  } )
+  .spread( function findData( db, table ) {
     db
-    .collection( 'datas' )
+    .collection( table )
     .find()
     .toArray( function( err, dataList ) {
       if( err ) return next( err );
       
       res.json( dataList );
     } );
-  } );
+  } )
+  .catch( next );
 } );
 
 
-
-
-function readFile( file ) {
-  return fs.readFileAsync( file, 'utf8' );
-}
 
 
 
@@ -149,54 +227,6 @@ function readFile( file ) {
  */
 // Load AREA INDEX
 connectToMongo()
-
-
-
-/**
- * Load status files
- */
-.return( AREA_INDEX_FILE )
-.then( readFile )
-.then( parseInt )
-.then( function setArea( index ) {
-  AREA_INDEX = index;
-} )
-.catch( function areaIndexError() {
-  AREA_INDEX = 0;
-} )
-// Load SUB AREA INDEX
-.return( SUB_AREA_INDEX_FILE )
-.then( readFile )
-.then( parseInt )
-.then( function setSubArea( index ) {
-  SUB_AREA_INDEX = index;
-} )
-.catch( function subAreaIndexError() {
-  SUB_AREA_INDEX = 0;
-} )
-// Load GRID INDEX
-.return( GRID_INDEX_FILE )
-.then( readFile )
-.then( parseInt )
-.then( function setGrid( index ) {
-  GRID_INDEX = index;
-} )
-.catch( function gridIndexError() {
-  GRID_INDEX = 0;
-} )
-.then( function genGridFile() {
-  var gridFileName = 'grid_'+AREA_INDEX+'_'+SUB_AREA_INDEX+'.json';
-  var gridPath = path.resolve( statusBasePath, gridFileName );
-  return gridPath;
-} )
-.then( readFile )
-.then( JSON.parse )
-.then( function saveCoords( coordinates ) {
-  grid = coordinates;
-} )
-.catch( function returnCoords() {
-  return [];
-} )
 
 
 

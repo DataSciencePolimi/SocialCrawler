@@ -15,7 +15,7 @@ This will start the crawler and also an **HTTP** [Primus][primus] server on the 
 ### Config
 Each social network is configured in its own directory inside the `social` folder. The configuration of a social network is composed of 3 files:
 
-* `config.json`: Contains the configuration of the social-network (api-key, database to use and so on...). The file **must** contain a `dbname` property with the name of the database to use.
+* `config.json`: Contains the configuration of the social-network (api-key, database to use and so on...). The file **must** contain a `dbname` property with the name of the database to use **and** a `table` property containing the name of the collection.
 * `scan.js`: This file exports the function that is called for each coordinate pair (latitude, longitude). To the function is passed an object containing the `lat` and `lng` values. The function can return a Promise.
 * `schema.js`: This file contains the schema of the data retrieved from the social network. Not all fields must be defined, only `location` is somehow required.
 
