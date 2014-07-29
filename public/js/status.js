@@ -107,6 +107,7 @@ function printGrid() {
 function mapReady() {
   printGrid();
 
+
   heatmapData = new google.maps.MVCArray([]);
   var heatmap = new google.maps.visualization.HeatmapLayer({
     data: heatmapData
@@ -115,7 +116,11 @@ function mapReady() {
 
   primus.on('data', updateHeatMap);
 
-  $.getJSON('/data/' + social)
+  $.ajax({
+    url: '/data/' + social,
+    type: 'get',
+    dataType: 'json'
+  })
     .done(function splitDataPoints(dataList) {
 
       /**

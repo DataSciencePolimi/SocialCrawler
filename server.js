@@ -7,6 +7,7 @@ var path = require( 'path' );
 var _ = require( 'lodash' );
 var Primus = require('primus');
 var express = require( 'express' );
+var JSONStream = require( 'JSONStream' );
 var swig = require( 'swig' );
 var mongo = require( 'mongodb' );
 var request = require( 'request' );
@@ -200,14 +201,15 @@ app.get( '/data/:social', function( req, res, next ) {
     return [ selectDatabase( dbName ), table ];
   } )
   .spread( function findData( db, table ) {
+    var stringify = JSONStream.stringify();
+
     db
     .collection( table )
     .find()
-    .toArray( function( err, dataList ) {
-      if( err ) return next( err );
-      
-      res.json( dataList );
-    } );
+    .stream()
+    .pipe( stringify )
+    .pipe( res );
+
   } )
   .catch( next );
 } );

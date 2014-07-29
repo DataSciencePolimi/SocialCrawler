@@ -9,6 +9,7 @@
   "author": "Volox",
   "license": "MIT",
   "dependencies": {
+    "JSONStream": "^0.8.4",
     "bluebird": "2.x",
     "debug": "1.x",
     "engine.io": "1.x",
