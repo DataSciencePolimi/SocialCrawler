@@ -12,13 +12,17 @@
     "bluebird": "2.x",
     "debug": "1.x",
     "engine.io": "1.x",
+    "engine.io-client": "1.x",
     "express": "4.x",
-    "instagram-node": "0.4.x",
     "flickrapi": "0.3.x",
+    "instagram-node": "0.4.x",
     "lodash": "2.x",
     "mkdirp": "0.5.x",
+    "mongodb": "1.x",
     "mongoose": "3.8.x",
     "primus": "2.x",
+    "request": "2.x",
+    "swig": "1.x",
     "yargs": "1.x"
   }
 }

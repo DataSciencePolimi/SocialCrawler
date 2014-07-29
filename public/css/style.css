@@ -3,9 +3,14 @@ html, body {
 }
 body {
   text-align: center;
+  padding-top: 51px;
 }
 
-
+.container-fluid {
+  height: 100%;
+  padding: 0;
+}
 #map {
-  height: 800px;
+  display: block;
+  height: 100%;
 }

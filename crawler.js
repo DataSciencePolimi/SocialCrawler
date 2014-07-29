@@ -1,15 +1,13 @@
 // Load system modules
 var fs = require( 'fs' );
-var http = require( 'http' );
 var path = require( 'path' );
 
 // Load modules
 var Primus = require('primus');
-var express = require( 'express' );
 var mkdirp = require( 'mkdirp' );
 var mongoose = require( 'mongoose' );
 var Promise = require( 'bluebird' );
-var debug = require( 'debug' )( 'crawl' );
+var debug = require( 'debug' )( 'crawler' );
 var argv = require('yargs').argv;
 
 // Load my modules
@@ -30,6 +28,8 @@ if( argv._.length<1 ) {
   return;
 }
 var social = argv._[0];
+var port = argv.p || 80;
+
 var baseDir = path.resolve( __dirname, 'social', social );
 var configFile = path.resolve( baseDir, 'config.json' );
 var scanFile = path.resolve( baseDir, 'scan.js' );
@@ -86,11 +86,8 @@ try {
 /**
  * Get the remaining data
  */
-areas = areas.slice( AREA_INDEX );
-areas[0] = areas[0].slice( SUB_AREA_INDEX );
-
-debug( 'AREA INDEX: %d, %d more to finish', AREA_INDEX, areas.length );
-debug( 'SUB AREA INDEX: %d, %d more to finish', SUB_AREA_INDEX, areas[0].length );
+debug( 'AREA INDEX: %d, %d more to finish', AREA_INDEX, areas.length-AREA_INDEX );
+debug( 'SUB AREA INDEX: %d, %d more to finish', SUB_AREA_INDEX, areas[AREA_INDEX].length-SUB_AREA_INDEX );
 
 
 
@@ -111,47 +108,11 @@ debug( 'SUB AREA INDEX: %d, %d more to finish', SUB_AREA_INDEX, areas[0].length 
 /**
  * Setup server
  */
-var app = express();
-var server = http.createServer( app );
-var primus = new Primus( server, {
+var primus = Primus.createServer( {
+  iknowhttpsisbetter: true,
+  port: port,
   transformer: 'engine.io'
 } );
-
-/**
- * Express routes
- */
-app.use( express.static( __dirname + '/public' ) );
-
-app.get( '/', function( req, res ){
-  res.redirect( '/index.html' );
-} );
-
-primus.on( 'connection', function gotConnection( spark ) {
-  DataModel
-  .find()
-  .exec( function( err, dataList ) {
-
-    var interval = setInterval( function() {
-      
-      spark.write( dataList.splice( 0, 20 ) );
-      
-      if( dataList.length===0 )
-        clearInterval( interval );
-    }, 500 );
-
-  } );
-} );
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -184,10 +145,11 @@ function saveElement( savedList, element ) {
   } )
   .then( function() {
     savedList.push( element );
-  }, function handleError( err ) {
-    debug( 'Unable to save data: %s', err.message );
+  }, function handleError() {
+    // debug( 'Unable to save data: %s', err.message );
   } )
-  .return( savedList );
+  .return( savedList )
+  ;
 }
 /**
  * Call scan and save eash result
@@ -200,25 +162,25 @@ function scanAndSaveCoordinates( nope, coordinates, idx ) {
     return Promise.reduce( dataList, saveElement, [] );
   } )
   .then( function dataSaved( savedList ) {
-    debug( 'Data saved correctly' );
-
-    GRID_INDEX = idx;
-    fs.writeFileSync( GRID_INDEX_FILE, ''+GRID_INDEX );
-
-    /**
-     * Broadcase the new data
-     */
-    primus.write( savedList );
+    if( savedList.length>0 ) {
+      debug( '%d element added, bradcasting data', savedList.length );
+      primus.write( savedList );
+    }
 
   }, function dataNotRetrieved( err ) {
     debug( 'Unable to retrieve data: %s', err.message );
+  } )
+  .then( function updateGridIndex() {
+    GRID_INDEX = idx+1;
+    fs.writeFileSync( GRID_INDEX_FILE, ''+GRID_INDEX );
   } );
 }
-
-
-
+/**
+ * Create the grid based on the current area and sub area.
+ */
 function createGrid( subArea ) {
-  return Promise.resolve( subArea )
+  return Promise
+  .resolve( subArea )
   .then( generateGrid )
   .then( function( coordinates ) {
     debug( 'Generated grid has %d elements', coordinates.length );
@@ -239,6 +201,10 @@ function cycleSubArea( nope, element, idx ) {
 
   return Promise
   .resolve( element )
+
+  /**
+   * Try lo load the grid file
+   */
   .then( function loadGrid() {
     
     GRID_INDEX = parseInt( fs.readFileSync( GRID_INDEX_FILE, 'utf8' ) );
@@ -246,11 +212,15 @@ function cycleSubArea( nope, element, idx ) {
     var gridPath = path.resolve( statusBasePath, gridFileName );
     var coordinates = require( gridPath );
 
-    coordinates = coordinates.slice( GRID_INDEX );
+    // coordinates = coordinates.slice( GRID_INDEX );
 
-    debug( 'Grid file "%s" loaded, %d elements to finish', gridFileName, coordinates.length );
+    debug( 'Grid file "%s" loaded, %d elements to finish', gridFileName, coordinates.length-GRID_INDEX );
     return coordinates;
   } )
+
+  /**
+   * Failed to load the grid, create One
+   */
   .catch( function handleError() {
     debug( 'Grid file not found... no problem, create one' );
 
@@ -259,13 +229,22 @@ function cycleSubArea( nope, element, idx ) {
 
     return createGrid( element );
   } )
+
+
+  /**
+   * Here we got the coordinates
+   */
   .then( function scanCoordinates( coordinates ) {
-    return Promise.reduce( coordinates, scanAndSaveCoordinates );
+    return Promise.reduce( coordinates, scanAndSaveCoordinates, null );
   } )
   .then( function subAreaComplete() {
     debug( 'SubArea complete!' );
-    SUB_AREA_INDEX = idx;
+    
+    SUB_AREA_INDEX = idx+1;
     fs.writeFileSync( SUB_AREA_INDEX_FILE, ''+SUB_AREA_INDEX );
+    
+    GRID_INDEX = 0;
+    fs.writeFileSync( GRID_INDEX_FILE, ''+GRID_INDEX );
   } )
   ;
 }
@@ -277,12 +256,17 @@ function cycleArea( nope, subarea, idx ) {
   debug( 'Iterating over area %d', idx );
 
   return Promise
-  .delay( 1000 )
-  .return( Promise.reduce( subarea, cycleSubArea ) )
+  .reduce( subarea, cycleSubArea, null )
   .then( function areaComplete() {
     debug( 'Area cycle complete!' );
-    AREA_INDEX = idx;
+    AREA_INDEX = idx+1;
     fs.writeFileSync( AREA_INDEX_FILE, ''+AREA_INDEX );
+    
+    SUB_AREA_INDEX = 0;
+    fs.writeFileSync( SUB_AREA_INDEX_FILE, ''+SUB_AREA_INDEX );
+    
+    GRID_INDEX = 0;
+    fs.writeFileSync( GRID_INDEX_FILE, ''+GRID_INDEX );
   } )
   ;
 }
@@ -299,24 +283,13 @@ function cycleArea( nope, subarea, idx ) {
  */
 Promise
 .resolve( mongoosePromise )
-.then( function( db ) {
-  debug( 'Database ready, import shema and model' );
-
-  return db;
-} )
 .then( schema )
-.then( function startServer( model ) {
+.then( function saveModel( model ) {
   DataModel = model;
   debug( 'Model loaded, starting server' );
 } )
-.then( function setupServer() {
-  /**
-   * Listen to the 80 port
-   */
-  server.listen( 80 );
-} )
 .then( function cycleArray() {
-  return Promise.reduce( areas, cycleArea );
+  return Promise.reduce( areas, cycleArea, null );
 } )
 .done( function cycleComplete() {
   debug( 'Cycle complete!' );
