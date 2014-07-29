@@ -24,6 +24,7 @@
     "primus": "2.x",
     "request": "2.x",
     "swig": "1.x",
+    "through": "2.x",
     "yargs": "1.x"
   }
 }

@@ -19,6 +19,6 @@
   "dependencies": {
     "bootstrap": "3.x",
     "jquery": "2.x",
-    "oboe": "~1.15.1"
+    "oboe": "1.x"
   }
 }

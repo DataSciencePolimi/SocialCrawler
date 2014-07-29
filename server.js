@@ -2,13 +2,12 @@
 var fs = require( 'fs' );
 var http = require( 'http' );
 var path = require( 'path' );
-var stream = require( 'stream' );
 
 // Load modules
-var _ = require( 'lodash' );
 var Primus = require('primus');
 var express = require( 'express' );
 var JSONStream = require( 'JSONStream' );
+var through = require( 'through' );
 var swig = require( 'swig' );
 var mongo = require( 'mongodb' );
 var request = require( 'request' );
@@ -188,21 +187,21 @@ app.get( '/status/:social', function( req, res ) {
 app.get( '/data/:social', function( req, res, next ) {
   var social = req.params.social;
 
-  var wait = new stream.Transform();
-
-  var buffer = '';
   var times = 0;
-  wait._transform = function( chunk, enc, done ) {
-    buffer += chunk;
+  var wait = through( function( data ) {
     times++;
+    this.queue( data );
 
     if( times>=200 ) {
-      this.push( buffer );
-      buffer = '';
-      return done();
-    }
-  };
+      this.pause();
+      var that = this;
 
+      setTimeout( function() {
+        times = 0;
+        that.resume();
+      }, 1000 );
+    }
+  } );
 
   var socialBasePath = path.resolve( __dirname, 'social', social );
   var configFile = path.resolve( socialBasePath, 'config.json' );
@@ -216,7 +215,7 @@ app.get( '/data/:social', function( req, res, next ) {
     return [ selectDatabase( dbName ), table ];
   } )
   .spread( function findData( db, table ) {
-    var stringify = JSONStream.stringifyObject();
+    var stringify = JSONStream.stringify();
 
     db
     .collection( table )
