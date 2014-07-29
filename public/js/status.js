@@ -120,7 +120,20 @@ function mapReady() {
   primus.on( 'data', updateHeatMap );
 
   $.getJSON( '/data/'+social )
-  .done( updateHeatMap );
+  .done( function splitDataPoints( dataList ) {
+    
+    /**
+     * Split data in 200 pieces to perform better
+     */
+    var interval = setInterval( function() {
+      var list = dataList.splice( 0, 200 );
+      updateHeatMap( list );
+      
+      if( dataList.length===0 )
+        clearInterval( interval );
+    }, 800 );
+
+  } );
 
 }
 

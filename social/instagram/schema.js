@@ -6,6 +6,7 @@ var mongoose = require( 'mongoose' );
 var debug = require( 'debug' )( 'schema' );
 
 // Load my modules
+var config = require( './config.json' );
 
 module.exports = exports = function createModel( db ) {
   /**
@@ -22,7 +23,8 @@ module.exports = exports = function createModel( db ) {
       type: {}
     }
   }, {
-    strict: false
+    strict: false,
+    collection: config.collection
   } );
 
 
