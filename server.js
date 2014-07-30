@@ -4,12 +4,12 @@ var http = require( 'http' );
 var path = require( 'path' );
 
 // Load modules
-var _ = require( 'lodash' );
 var Primus = require('primus');
 var express = require( 'express' );
 var JSONStream = require( 'JSONStream' );
+var through = require( 'through' );
 var swig = require( 'swig' );
-var mongo = require( 'mongodb' );
+var mongoose = require( 'mongoose' );
 var request = require( 'request' );
 var Promise = require( 'bluebird' );
 var debug = require( 'debug' )( 'server' );
@@ -17,8 +17,8 @@ var argv = require( 'yargs' ).argv;
 
 // Load my modules
 var areas = require( './areas.json' );
-var MongoClient = mongo.MongoClient;
-var mongoClient;
+
+
 
 /**
  * Enable long stack traces
@@ -26,7 +26,7 @@ var mongoClient;
 Promise.longStackTraces();
 Promise.promisifyAll( fs );
 Promise.promisifyAll( request );
-Promise.promisifyAll( mongo );
+Promise.promisifyAll( mongoose );
 
 
 
@@ -44,6 +44,7 @@ var key = argv.k || 'AIzaSyCnyhvgRPmKmkx7_ER7AojeWBvenL4fUtQ';
  * Init status cache
  */
 var cache = {};
+var connection;
 
 
 
@@ -58,16 +59,11 @@ function readFile( file ) {
  * Mongo promise, fullfilled when the connection is opened
  */
 function connectToMongo() {
-  return MongoClient
-  .connectAsync( 'mongodb://localhost:27017/' )
-  .then( function( client ) {
-    debug( 'Connected to mongo' );
-    mongoClient = client;
-    return mongoClient;
-  } );
+  connection = mongoose.createConnection( 'mongodb://localhost:27017/' );
+  return connection;
 }
-function selectDatabase( dataBase ) {
-  return mongoClient.db( dataBase );
+function switchDatabase( dataBase ) {
+  return connection.useDb( dataBase );
 }
 
 
@@ -188,30 +184,62 @@ app.get( '/status/:social', function( req, res ) {
 app.get( '/data/:social', function( req, res, next ) {
   var social = req.params.social;
 
+  var times = 0;
+  var wait = through( function( data ) {
+    times++;
+    this.queue( data );
+
+    if( times>=200 ) {
+      this.pause();
+      var that = this;
+
+      setTimeout( function() {
+        times = 0;
+        that.resume();
+      }, 1000 );
+    }
+  } );
 
   var socialBasePath = path.resolve( __dirname, 'social', social );
   var configFile = path.resolve( socialBasePath, 'config.json' );
+  var schemaFile = path.resolve( socialBasePath, 'schema.js' );
+  var schema = require( schemaFile );
 
   readFile( configFile )
   .then( JSON.parse )
-  .then( function getDbInfo( config ) {
+  .get( 'dbname' )
+  .then( switchDatabase )
+  .then( schema )
+  .then( function( model ) {
+    
+    model
+    .find()
+    .select( 'location' )
+    .stream()
+    .pipe( JSONStream.stringify() )
+    .pipe( res );
+  } )
+  .catch( next );
+
+  /*
+   ( function getDbInfo( config ) {
     var dbName = config.dbname;
     var table = config.table;
 
-    return [ selectDatabase( dbName ), table ];
+    return [ switchDatabase( dbName ), table ];
   } )
-  .spread( function findData( db, table ) {
-    var stringify = JSONStream.stringify();
+  .spread( function findData( db ) {
 
     db
     .collection( table )
-    .find()
+    .find( {}, { location: 1 } )
     .stream()
     .pipe( stringify )
+    .pipe( wait )
     .pipe( res );
 
   } )
-  .catch( next );
+  */
 } );
 
 
@@ -228,7 +256,8 @@ app.get( '/data/:social', function( req, res, next ) {
  * Entry point for the program
  */
 // Load AREA INDEX
-connectToMongo()
+Promise
+.resolve( connectToMongo() )
 
 
 

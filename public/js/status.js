@@ -14,15 +14,11 @@ var heatmapData;
 
 
 function addMarker(lat, lng, title) {
-  var latLng = new google.maps.LatLng(lat, lng);
-
-  // To add the marker to the map, use the 'map' property
-  var marker = new google.maps.Marker({
-    position: latLng,
-    title: title
+  new google.maps.Marker({
+    position: new google.maps.LatLng(lat, lng),
+    title: title,
+    map: map
   });
-
-  marker.setMap(map);
 }
 
 
@@ -39,9 +35,9 @@ function addMarkers(dataList) {
   });
 }
 
+
 function addHeatmapPoint(lat, lng) {
-  var latLng = new google.maps.LatLng(lat, lng);
-  heatmapData.push(latLng);
+  heatmapData.push(new google.maps.LatLng(lat, lng));
 }
 
 function updateHeatMap(dataList) {
@@ -116,19 +112,19 @@ function mapReady() {
 
   primus.on('data', updateHeatMap);
 
+
   oboe('/data/' + social)
     .node('location', function gotData(location) {
-      var lat = location.coordinates[1];
-      var lng = location.coordinates[0];
-      addHeatmapPoint(lat, lng);
+      addHeatmapPoint(location.coordinates[1], location.coordinates[0]);
     });
 }
 
 
 function initialize() {
   var mapOptions = {
+
     center: new google.maps.LatLng(45.4627338, 9.1777323),
-    zoom: 12
+    zoom: 13
   };
 
 
