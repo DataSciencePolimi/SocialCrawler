@@ -167,7 +167,7 @@ app.get( '/status/:social', function( req, res ) {
    */
   promise
   .then( function renderPage( data ) {
-    
+
     res.render( 'status', {
       areaIndex: data.AREA_INDEX,
       subAreaIndex: data.SUB_AREA_INDEX,
@@ -211,12 +211,13 @@ app.get( '/data/:social', function( req, res, next ) {
   .then( switchDatabase )
   .then( schema )
   .then( function( model ) {
-    
+
     model
     .find()
     .select( 'location' )
     .stream()
     .pipe( JSONStream.stringify() )
+    // .pipe( wait )
     .pipe( res );
   } )
   .catch( next );
