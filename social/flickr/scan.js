@@ -42,6 +42,7 @@ module.exports = exports = function scanCoordinates(coords) {
   var photos = [];
 
   var options = {
+    min_upload_date: 1417902309,
     lat: coords.lat,
     lon: coords.lng,
     radius: 0.05,
@@ -109,7 +110,15 @@ module.exports = exports = function scanCoordinates(coords) {
 
 
       if (results.length === 0) {
-        return photos;
+        debug(limit);
+        if (limit <= 1) {
+          limit = 3600;
+          debug('Limit reached, waiting 1 hour');
+          return Promise.delay(photos, HOUR);
+        } else {
+          debug('Limit not reached, keep going');
+          return photos;
+        }
       } else {
         debug(results);
       }
@@ -143,10 +152,13 @@ module.exports = exports = function scanCoordinates(coords) {
       /**
        * If i reached the limit per hour then wait 1H
        */
+      debug(limit);
       if (limit <= 1) {
         limit = 3600;
+        debug('Limit reached, waiting 1 hour');
         return Promise.delay(photos, HOUR);
       } else {
+        debug('Limit not reached, keep going');
         return photos;
       }
 

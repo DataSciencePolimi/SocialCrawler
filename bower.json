@@ -19,6 +19,7 @@
   "dependencies": {
     "bootstrap": "3.x",
     "jquery": "2.x",
-    "oboe": "1.x"
+    "oboe": "2.x",
+    "dat-gui": "~0.5.0"
   }
 }

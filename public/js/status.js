@@ -1,4 +1,4 @@
-/* global areas, google, subAreaIndex, areaIndex, Primus, social, oboe */
+/* global areas, google, subAreaIndex, areaIndex, Primus, social, oboe, dat */
 /* jshint browser: true*/
 /* jshint jquery: true */
 
@@ -10,6 +10,8 @@ var green = 'rgb(177, 191, 114)';
 var blue = 'rgb(114, 163, 191)';
 var red = 'rgb(191, 114, 139)';
 var heatmapData;
+var heatmap;
+var gui;
 
 
 
@@ -101,14 +103,13 @@ function printGrid() {
 
 
 function mapReady() {
-  printGrid();
+  // printGrid();
 
 
   heatmapData = new google.maps.MVCArray([]);
-  var heatmap = new google.maps.visualization.HeatmapLayer({
+  heatmap = new google.maps.visualization.HeatmapLayer({
     data: heatmapData
   });
-  heatmap.setMap(map);
 
   primus.on('data', updateHeatMap);
 
@@ -116,6 +117,61 @@ function mapReady() {
   oboe('/data/' + social)
     .node('location', function gotData(location) {
       addHeatmapPoint(location.coordinates[1], location.coordinates[0]);
+    });
+
+  var settings = {};
+
+  Object.defineProperties(settings, {
+    'opacity': {
+      set: function(val) {
+        heatmap.set('opacity', val);
+      },
+      get: function() {
+        return heatmap.get('opacity') || 0.4;
+      }
+    },
+    'radius': {
+      set: function(val) {
+        heatmap.set('radius', val);
+      },
+      get: function() {
+        return heatmap.get('radius') || 10;
+      }
+    },
+    'maxIntensity': {
+      set: function(val) {
+        heatmap.set('maxIntensity', val === 0 ? false : val);
+      },
+      get: function() {
+        return heatmap.get('maxIntensity') || 0;
+      }
+    },
+    'dissipating': {
+      set: function(val) {
+        heatmap.set('dissipating', val);
+      },
+      get: function() {
+        return heatmap.get('dissipating') || false;
+      }
+    }
+  });
+
+  gui = new dat.GUI();
+  gui.add(settings, 'opacity', 0, 1);
+  gui.add(settings, 'radius', 5, 60);
+  gui.add(settings, 'maxIntensity', 0, 60);
+  gui.add(settings, 'dissipating');
+
+
+
+  //primus.on( 'data', updateHeatMap );
+
+
+  oboe('/data/' + social)
+    .node('!.*', function gotData(data) {
+      var location = data.location;
+      addHeatmapPoint(location.coordinates[1], location.coordinates[0]);
+      return oboe.drop;
     });
 }
 
